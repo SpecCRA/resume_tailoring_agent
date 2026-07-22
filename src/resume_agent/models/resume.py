@@ -47,6 +47,7 @@ class Resume(BaseModel):
 
 class TailoredResume(BaseModel):
     """Subset of Resume with only the selected bullets for a given job."""
+
     name: str
     email: str
     phone: str
@@ -58,5 +59,5 @@ class TailoredResume(BaseModel):
     experience: list[ExperienceEntry]
     education: list[EducationEntry]
     projects: list[ProjectEntry]
-    fit_score: float       # 0.0 – 1.0
-    fit_notes: str         # LLM explanation of match quality
+    fit_score: float  # 0.0 – 1.0
+    fit_notes: str  # LLM explanation of match quality

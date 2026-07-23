@@ -22,14 +22,14 @@ def build(raw_text: str) -> str:
       "title": str,
       "dates": str,
       "location": str | null,
-      "bullets": [str]
+      "bullets": [{{"original": str}}]
     }}
   ],
   "education": [
     {{"institution": str, "degree": str, "dates": str, "gpa": float | null}}
   ],
   "projects": [
-    {{"name": str, "description": str | null, "bullets": [str], "url": str | null}}
+    {{"name": str, "description": str | null, "bullets": [{{"original": str}}], "url": str | null}}
   ]
 }}
 

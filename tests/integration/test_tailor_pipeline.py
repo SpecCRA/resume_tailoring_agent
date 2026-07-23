@@ -5,6 +5,7 @@ from resume_agent.pipelines.tailor import _tailor_with_page_limit
 
 def _fake_message(text: str):
     block = MagicMock()
+    block.type = "text"
     block.text = text
     msg = MagicMock()
     msg.content = [block]

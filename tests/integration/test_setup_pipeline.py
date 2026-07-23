@@ -56,6 +56,7 @@ BIG_RESUME = {
 
 def _fake_message(text: str):
     block = MagicMock()
+    block.type = "text"
     block.text = text
     msg = MagicMock()
     msg.content = [block]

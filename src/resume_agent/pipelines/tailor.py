@@ -7,11 +7,10 @@ from slugify import slugify
 from resume_agent.config import settings
 from resume_agent.models.job import JobDescription
 from resume_agent.prompts import extract_jd, match_resume, tailor_resume
+from resume_agent.tools.llm import extract_json, extract_text
 from resume_agent.tools.page_validator import is_one_page
 from resume_agent.tools.pdf_exporter import markdown_to_pdf
 from resume_agent.tools.web_scraper import fetch_job_text
-
-import json
 
 
 def run_tailor(url: str, company: str, role: str) -> Path:
@@ -33,7 +32,7 @@ def run_tailor(url: str, company: str, role: str) -> Path:
         system=extract_jd.SYSTEM,
         messages=[{"role": "user", "content": extract_jd.build(raw_jd, company, role)}],
     )
-    jd_data = json.loads(msg.content[0].text)
+    jd_data = extract_json(msg)
     jd = JobDescription(company=company, role=role, url=url, slug=slug, raw_text=raw_jd, **jd_data)
 
     # Write job.md
@@ -58,7 +57,7 @@ def run_tailor(url: str, company: str, role: str) -> Path:
             f"JOB:\n{jd_path.read_text()}\n\nRESUME (excerpt):\n{base_md[:3000]}"
         )}],
     )
-    score_data = json.loads(score_msg.content[0].text)
+    score_data = extract_json(score_msg)
     fit_score: float = score_data["score"]
     fit_notes: str   = score_data["notes"]
     rprint(f"  Fit score: [bold]{fit_score:.0%}[/bold] — {fit_notes}")
@@ -103,7 +102,7 @@ def _tailor_with_page_limit(
                 base_md, jd_md, fit_score, trim_pass=trim_pass
             )}],
         )
-        tailored_md = msg.content[0].text
+        tailored_md = extract_text(msg)
 
         # Quick page check via temp PDF
         tmp_pdf = output_dir / f"_{slug}_tmp.pdf"

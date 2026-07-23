@@ -1,4 +1,3 @@
-import json
 import re
 from pathlib import Path
 
@@ -14,6 +13,7 @@ from resume_agent.models.resume import (
     Resume,
 )
 from resume_agent.prompts import parse_resume, rewrite_bullets
+from resume_agent.tools.llm import extract_json
 from resume_agent.tools.pdf_reader import extract_text
 
 
@@ -34,7 +34,7 @@ def run_setup(pdf_path: str) -> Path:
         system=parse_resume.SYSTEM,
         messages=[{"role": "user", "content": parse_resume.build(raw_text)}],
     )
-    data = json.loads(msg.content[0].text)
+    data = extract_json(msg)
     resume = Resume.model_validate(data)
 
     # ── Rewrite bullets ──
@@ -98,13 +98,13 @@ def _ensure_bullet_variants(
             continue
         msg = client.messages.create(
             model=settings.claude_model,
-            max_tokens=1024,
+            max_tokens=2048,
             system=rewrite_bullets.SYSTEM,
             messages=[{"role": "user", "content": rewrite_bullets.build(
                 bullet.original, context, n
             )}],
         )
-        variants = json.loads(msg.content[0].text)
+        variants = extract_json(msg)
         result.append(BulletPoint(original=bullet.original, variants=variants))
     return result
 

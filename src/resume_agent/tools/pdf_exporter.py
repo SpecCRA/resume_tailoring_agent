@@ -1,3 +1,9 @@
+"""Renders tailored resume markdown to a PDF via `markdown` + `weasyprint`, using
+a minimal single-column, table-free stylesheet chosen specifically to stay
+ATS-parseable (plain headers, no multi-column layout, real selectable text — not
+a rasterized image).
+"""
+
 from pathlib import Path
 
 import markdown

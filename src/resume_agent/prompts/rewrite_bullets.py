@@ -1,3 +1,11 @@
+"""Bullet-variant prompt, used once per bullet at setup time (`_ensure_bullet_
+variants` in `pipelines/setup.py`): generates several phrasings of the same
+accomplishment — same underlying facts, different framing (technical depth,
+business impact, scale, collaboration) — so `prompts/tailor_resume.py` has real
+material to choose from for whatever a given JD emphasizes. Never invents a
+metric, tool, or outcome not already present in the original bullet.
+"""
+
 SYSTEM = (
     "You are an expert resume writer who crafts ATS-optimized, "
     "achievement-focused bullet points. Use strong action verbs and quantify impact "

@@ -1,3 +1,10 @@
+"""Resume-parsing prompt: turns raw PDF-extracted text into the `Resume` JSON
+schema. The one instruction that matters most here is fidelity — extract
+everything faithfully, never summarize/rewrite/invent a contact field or
+headline that isn't literally present in the source. This is the entry point for
+every fact the rest of the pipeline is allowed to work with.
+"""
+
 SYSTEM = (
     "You are an expert resume parser. Extract ALL content faithfully — "
     "do not summarize or rewrite. Return only valid JSON."

@@ -1,3 +1,16 @@
+"""The core per-job tailoring prompt — the last, most expensive LLM call in the
+pipeline, only reached after the fit assessment recommends applying.
+
+Given the full base resume (every bullet variant) and the structured JD, it
+selects the most relevant experience/projects/skills, picks between pre-generated
+bullet variants (never rewriting on the fly), mirrors the JD's own vocabulary,
+and enforces ATS-safe single-column markdown — all subordinate to the final rule:
+never add a skill, tool, or claim that isn't already stated in the resume, even
+if the JD asks for it. Called in a retry loop by `pipelines/tailor.py.
+_tailor_with_page_limit`, which re-invokes it with `trim_pass` incremented until
+the rendered PDF fits on one page.
+"""
+
 SYSTEM = (
     "You are an expert resume coach. Select and tailor resume content "
     "to maximize ATS score and recruiter relevance for a specific job. "

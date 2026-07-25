@@ -1,3 +1,12 @@
+"""Runtime configuration, loaded from environment variables / a local `.env` file.
+
+`settings` (a module-level `Settings` instance) is the single source of truth for
+the Anthropic API key/model, file paths, and every pipeline tuning knob (bullet
+variant counts, page-trim attempts, the fit-score and JD-length gates). Imported
+directly wherever a pipeline needs a value, e.g. `from resume_agent.config import
+settings`.
+"""
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

@@ -1,3 +1,21 @@
+"""One-time (and re-run-on-edit) pipeline: turns a resume PDF into `resume_base.md`.
+
+`run_setup` parses a PDF into a `Resume`, backfills 3-5 phrasing variants per
+bullet, and writes the base resume plus a sibling adjacent-skills suggestions
+file. `run_review_base` re-parses an existing (possibly hand-edited)
+`resume_base.md` and backfills variants only for bullets that don't have them yet,
+leaving everything else untouched — this is what makes the base resume safe to
+edit directly rather than only through the LLM.
+
+The other half of this module is the markdown render/parse round-trip
+(`_render_base_md` / `_parse_base_md`) that makes that hand-editing possible:
+`resume_base.md` is both the LLM's output format and the only source of truth for
+a `Resume`, so the two functions must stay exact inverses of each other.
+`_render_originals_only_md` is a lighter sibling used wherever only the
+underlying facts are needed, not every rephrasing (fit assessment, skill
+suggestions) — variants exist for bullet *selection*, not judgment.
+"""
+
 import re
 from pathlib import Path
 

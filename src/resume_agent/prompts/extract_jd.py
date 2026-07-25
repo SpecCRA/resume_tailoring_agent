@@ -1,3 +1,11 @@
+"""JD-extraction prompt: turns raw scraped posting text into a structured
+`JobDescription`. Extracts skill/keyword terms verbatim (never paraphrased, so
+downstream ATS-keyword matching isn't silently broken) and flags content that
+isn't actually a job posting (`looks_like_a_job_posting`) so
+`pipelines/tailor.py` can reject a bad scrape instead of tailoring against
+fabricated requirements.
+"""
+
 SYSTEM = "You are a job description analyst. Extract structured data. Return only valid JSON."
 
 

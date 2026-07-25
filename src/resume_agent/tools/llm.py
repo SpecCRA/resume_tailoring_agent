@@ -1,3 +1,15 @@
+"""Thin wrapper around the Anthropic Messages API used by every pipeline call.
+
+`call_llm_json`/`call_llm_text` are the two functions everything else in the
+codebase calls — a single system+user prompt in, parsed text or JSON out.
+`call_llm_json` retries once with a corrective instruction if the first response
+isn't parseable JSON (Claude occasionally deviates from the requested format
+despite prompt instructions) before raising `LLMResponseError`. `extract_text`/
+`extract_json` are the lower-level helpers that pull a response apart: scanning
+for the first text block (Claude can prepend a non-text block) and stripping the
+markdown fences Claude sometimes wraps JSON in.
+"""
+
 import json
 import re
 from typing import Any

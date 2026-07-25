@@ -1,3 +1,12 @@
+"""Setup-time-only adjacent-skill suggestion prompt: proposes skills strongly
+implied by the resume's existing content (each with cited evidence) for a human
+to review. Called from `pipelines/setup.py._write_skill_suggestions`, which
+writes the result to a sibling file (`resume_base.suggestions.md`) — never
+merged into the base resume automatically, and never read by the tailoring
+pipeline. A human must manually promote an entry into `## Skills` before it can
+ever appear in a tailored resume.
+"""
+
 SYSTEM = (
     "You are an expert technical resume reviewer. Suggest closely-related skills a "
     "candidate likely has based on what's already demonstrated in their resume, for "

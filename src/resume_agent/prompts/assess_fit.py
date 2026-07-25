@@ -1,3 +1,11 @@
+"""Fit-assessment prompt: scores the base resume against a JD, returning a
+0.0-1.0 fit_score, a short reasoning string, and any concrete gaps. Used by
+`pipelines/tailor.py` as a gate — below `settings.min_fit_score`, the pipeline
+stops before the more expensive tailoring call runs at all. Deliberately takes a
+variant-free resume view (see `_render_originals_only_md`) since judging overall
+fit doesn't need 3-5 rephrasings of the same bullet.
+"""
+
 SYSTEM = (
     "You are an expert technical recruiter. Assess how well a candidate's resume "
     "matches a job description and return only valid JSON."

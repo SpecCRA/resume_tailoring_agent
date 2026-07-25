@@ -1,3 +1,9 @@
+"""CLI entry point (Typer). Exposes three commands — `setup`, `review`, `tailor` —
+each a thin wrapper around a pipeline function in `pipelines/`. All three catch
+`ResumeAgentError` (see `errors.py`) and print a clean message instead of letting
+a scraping/LLM/validation failure surface as a raw traceback.
+"""
+
 from pathlib import Path
 from typing import Annotated
 

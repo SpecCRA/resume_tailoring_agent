@@ -1,3 +1,16 @@
+"""Per-job pipeline: a posting URL + the base resume -> a tailored, one-page PDF.
+
+`run_tailor` walks five steps: (1) scrape the posting, rejecting it early if it's
+too short or the extractor flags it as not an actual job description; (2) extract
+it into a structured `JobDescription`; (3) assess resume-to-JD fit against a
+variant-free view of the resume, gated by `settings.min_fit_score` — a "pass"
+recommendation stops the pipeline here, before either of the more expensive calls
+below run; (4) tailor the resume, retrying with trim passes
+(`_tailor_with_page_limit`) until the rendered PDF fits one page; (5) export it.
+Every step that calls out to an LLM or the network can raise a `ResumeAgentError`
+subclass (see `errors.py`) instead of crashing with a raw exception.
+"""
+
 from pathlib import Path
 
 import anthropic

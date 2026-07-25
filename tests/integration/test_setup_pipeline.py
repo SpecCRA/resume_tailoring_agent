@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from resume_agent.pipelines import setup as setup_pipeline
 from resume_agent.pipelines.setup import run_setup
-from resume_agent.prompts import parse_resume, rewrite_bullets
+from resume_agent.prompts import parse_resume, rewrite_bullets, suggest_adjacent_skills
 from resume_agent.tools.page_validator import count_pages
 from resume_agent.tools.pdf_exporter import markdown_to_pdf
 
@@ -14,8 +14,8 @@ BIG_RESUME = {
     "name": "Jordan Rivera",
     "email": "jordan@example.com",
     "phone": "555-0100",
-    "linkedin": None,
-    "github": None,
+    "linkedin": "",
+    "github": "",
     "location": "Remote",
     "summary": "Senior engineer with a decade of experience across many domains.",
     "skills": [f"Skill {i}" for i in range(30)],
@@ -68,6 +68,8 @@ def _fake_create(*, system, **kwargs):
         return _fake_message(json.dumps(BIG_RESUME))
     if system == rewrite_bullets.SYSTEM:
         return _fake_message(json.dumps(["variant one", "variant two", "variant three"]))
+    if system == suggest_adjacent_skills.SYSTEM:
+        return _fake_message(json.dumps({"suggestions": []}))
     raise AssertionError(f"Unexpected system prompt: {system}")
 
 

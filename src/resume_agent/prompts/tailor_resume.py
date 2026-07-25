@@ -7,7 +7,7 @@ SYSTEM = (
 )
 
 
-def build(resume_md: str, jd_md: str, fit_score: float, trim_pass: int = 0) -> str:
+def build(resume_md: str, jd_md: str, gaps: list[str], trim_pass: int = 0) -> str:
     trim_note = (
         f"\n\nIMPORTANT: This is trim pass {trim_pass}. The previous output exceeded one page. "
         "Remove the least-relevant bullets/experience entries and shorten descriptions "
@@ -16,32 +16,62 @@ def build(resume_md: str, jd_md: str, fit_score: float, trim_pass: int = 0) -> s
         if trim_pass > 0
         else ""
     )
+    gaps_note = (
+        "Note these specific gaps clearly in the summary rather than papering over "
+        f"them: {'; '.join(gaps)}."
+        if gaps
+        else "No notable gaps were flagged between the resume and this job."
+    )
     return f"""Tailor the resume below for the job description provided.
 
 Rules:
 1. Assess the job description first, then select only the experience entries,
     projects, and skills that are most relevant to it. Omit experience or project
-    entries with zero relevance to the role. Select at most 2 projects — the ones
-    most relevant to the job description — and shorten the Experience section
-    (fewer bullets per entry, or omitting the least-relevant experience entries) as
-    needed to make room for them.
+    entries with zero relevance to the role, and cut any skills that are irrelevant
+    to this specific posting — a long undifferentiated skills list reads as
+    unfocused. Select at most 2 projects — the ones most relevant to the job
+    description — and shorten the Experience section (fewer bullets per entry, or
+    omitting the least-relevant experience entries) as needed to make room for them.
 2. For each remaining bullet, default to the ORIGINAL wording. Only replace it with
     one of the listed variants (v1, v2, ...) if the original does not fit the job
     description well and a variant is a clearly closer fit. Do not swap wording just
-    for style or variety — reword only the bullets that need it.
+    for style or variety — reword only the bullets that need it. When more than one
+    variant would be a valid swap, prefer whichever variant's existing framing
+    matches the kind of impact the job description emphasizes (e.g. a
+    throughput/latency/scale framing for a job emphasizing large-scale systems, a
+    stakeholder/adoption framing for a job emphasizing business impact) — still only
+    ever selecting among the variants already provided, never inventing a new one.
+    Bullets within a role or project have no obligation to stay in their original
+    order — lead with whichever existing bullet is most relevant to this job.
 3. Reorder skills to front-load keywords from the job description.
-4. Keep the summary focused on the exact role and company.
-5. Output ATS-safe markdown: no tables, no columns, plain section headers.
-6. Format: # Name, contact line, ## Summary, ## Skills, ## Experience, ## Education,
-    ## Projects (at most 2 entries). The header (name + contact line) and the
-    Education section must always be included in full — never omit them, regardless
-    of relevance to the job description.
-7. Fit score context: {fit_score:.0%} match — {'prioritize best fit' if fit_score > 0.7 else 'note skills gaps clearly in summary'}.
-8. Do not add any skill, tool, technology, responsibility, or achievement that is not
-    already stated in the resume below, even if it appears in the job description.
-    Reordering, rewording, and emphasis are fine; new claims are not. If there is a
-    genuine gap between the resume and the JD, leave it as a gap rather than papering
-    over it.
+4. Mirror the job description's own vocabulary where it names, with a different
+    term, something the resume already demonstrates (e.g. resume says "ETL
+    pipelines", job description says "batch and streaming" — use their term if it's
+    a genuine description of the same work). This is relabeling something already
+    true, not a new claim — never use the job description's term for a skill or tool
+    the resume does not actually support (see rule 11).
+5. Keep the summary focused on the exact role and company.
+6. If the resume has a headline line under the name, and the posted job title is a
+    defensible match for the candidate's actual experience and skills, update the
+    headline to the posted title. Otherwise keep the candidate's own existing
+    headline as-is. Never invent a headline if the resume doesn't have one.
+7. The first time a well-known, unambiguous acronym that already appears in the
+    source resume shows up in your output, spell it out once, e.g. "Extract,
+    Transform, Load (ETL)". Skip this for any acronym whose expansion isn't
+    obvious/unambiguous — guessing wrong is itself a fabrication.
+8. Output ATS-safe markdown: no tables, no columns, plain section headers.
+9. Format: # Name, optional headline line, contact line, ## Summary, ## Skills,
+    ## Experience, ## Education, ## Projects (at most 2 entries). The header (name +
+    optional headline + contact line) and the Education section must always be
+    included in full — never omit them, regardless of relevance to the job
+    description.
+10. Fit context: {gaps_note}
+11. Do not add any skill, tool, technology, responsibility, or achievement that is
+    not already stated in the resume below, even if it appears in the job
+    description. Reordering, rewording, relabeling with the job description's own
+    terms (rule 4), and emphasis are fine; new claims are not. If there is a genuine
+    gap between the resume and the JD, leave it as a gap rather than papering over
+    it.
 {trim_note}
 
 ---

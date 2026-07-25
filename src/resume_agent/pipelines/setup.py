@@ -2,9 +2,11 @@ import re
 from pathlib import Path
 
 import anthropic
+import pydantic
 from rich import print as rprint
 
 from resume_agent.config import settings
+from resume_agent.errors import LLMResponseError
 from resume_agent.models.resume import (
     BulletPoint,
     EducationEntry,
@@ -12,8 +14,8 @@ from resume_agent.models.resume import (
     ProjectEntry,
     Resume,
 )
-from resume_agent.prompts import parse_resume, rewrite_bullets
-from resume_agent.tools.llm import extract_json
+from resume_agent.prompts import parse_resume, rewrite_bullets, suggest_adjacent_skills
+from resume_agent.tools.llm import call_llm_json
 from resume_agent.tools.pdf_reader import extract_text
 
 
@@ -28,32 +30,26 @@ def run_setup(pdf_path: str) -> Path:
 
     # ── Parse sections ──
     rprint("[bold]Step 2:[/bold] Parsing and tagging resume sections...")
-    msg = client.messages.create(
-        model=settings.claude_model,
-        max_tokens=4096,
-        system=parse_resume.SYSTEM,
-        messages=[{"role": "user", "content": parse_resume.build(raw_text)}],
+    data = call_llm_json(
+        client, system=parse_resume.SYSTEM, prompt=parse_resume.build(raw_text), max_tokens=4096
     )
-    data = extract_json(msg)
-    resume = Resume.model_validate(data)
+    try:
+        resume = Resume.model_validate(data)
+    except pydantic.ValidationError as e:
+        raise LLMResponseError(
+            f"The resume parser returned data that didn't match the expected shape: {e}"
+        ) from e
 
     # ── Rewrite bullets ──
     rprint("[bold]Step 3:[/bold] Rewriting bullets with variants...")
-    for exp in resume.experience:
-        ctx = f"{exp.title} at {exp.company}"
-        exp.bullets = _ensure_bullet_variants(
-            client, exp.bullets, ctx, settings.max_bullet_variants
-        )
-
-    for proj in resume.projects:
-        ctx = f"Project: {proj.name}"
-        proj.bullets = _ensure_bullet_variants(client, proj.bullets, ctx, 3)
+    _generate_all_bullet_variants(client, resume)
 
     # ── Write base resume ──
     rprint("[bold]Step 4:[/bold] Writing base resume template...")
     base_path = Path(settings.base_resume_path)
     base_path.parent.mkdir(parents=True, exist_ok=True)
     base_path.write_text(_render_base_md(resume))
+    _write_skill_suggestions(client, resume, base_path)
     rprint(f"[green]Done! Base resume written to:[/green] {base_path}")
     return base_path
 
@@ -71,6 +67,17 @@ def run_review_base() -> Path:
     resume = _parse_base_md(base_path.read_text())
 
     rprint("[bold]Step 2:[/bold] Backfilling variants for new/edited bullets...")
+    _generate_all_bullet_variants(client, resume)
+
+    rprint("[bold]Step 3:[/bold] Rewriting base resume template...")
+    base_path.write_text(_render_base_md(resume))
+    _write_skill_suggestions(client, resume, base_path)
+    rprint(f"[green]Done! Base resume refreshed:[/green] {base_path}")
+    return base_path
+
+
+def _generate_all_bullet_variants(client: anthropic.Anthropic, resume: Resume) -> None:
+    """Backfill bullet variants for every experience/project bullet that lacks them."""
     for exp in resume.experience:
         ctx = f"{exp.title} at {exp.company}"
         exp.bullets = _ensure_bullet_variants(
@@ -79,12 +86,9 @@ def run_review_base() -> Path:
 
     for proj in resume.projects:
         ctx = f"Project: {proj.name}"
-        proj.bullets = _ensure_bullet_variants(client, proj.bullets, ctx, 3)
-
-    rprint("[bold]Step 3:[/bold] Rewriting base resume template...")
-    base_path.write_text(_render_base_md(resume))
-    rprint(f"[green]Done! Base resume refreshed:[/green] {base_path}")
-    return base_path
+        proj.bullets = _ensure_bullet_variants(
+            client, proj.bullets, ctx, settings.max_project_bullet_variants
+        )
 
 
 def _ensure_bullet_variants(
@@ -96,22 +100,49 @@ def _ensure_bullet_variants(
         if bullet.variants:
             result.append(bullet)
             continue
-        msg = client.messages.create(
-            model=settings.claude_model,
-            max_tokens=2048,
+        variants = call_llm_json(
+            client,
             system=rewrite_bullets.SYSTEM,
-            messages=[{"role": "user", "content": rewrite_bullets.build(
-                bullet.original, context, n
-            )}],
+            prompt=rewrite_bullets.build(bullet.original, context, n),
+            max_tokens=2048,
         )
-        variants = extract_json(msg)
         result.append(BulletPoint(original=bullet.original, variants=variants))
     return result
 
 
+def _write_skill_suggestions(client: anthropic.Anthropic, resume: Resume, base_path: Path) -> None:
+    """Suggest adjacent skills for a human to review, written to a sibling file that
+    the tailoring pipeline never reads. Nothing here is used until a human manually
+    promotes an entry into the resume's own `## Skills` line."""
+    suggestions_path = base_path.with_name(f"{base_path.stem}.suggestions.md")
+    result = call_llm_json(
+        client,
+        system=suggest_adjacent_skills.SYSTEM,
+        prompt=suggest_adjacent_skills.build(_render_originals_only_md(resume)),
+        max_tokens=1024,
+    )
+    suggestions = result.get("suggestions", [])
+    if not suggestions:
+        suggestions_path.unlink(missing_ok=True)
+        return
+    lines = [
+        "# Suggested Skills — review before use",
+        "",
+        "These are not part of your resume yet. Review each one, then manually move",
+        "anything accurate into the `## Skills` line of your base resume. The tailoring",
+        "pipeline never reads this file.",
+        "",
+        *[f"- {s['skill']} — {s['evidence']}" for s in suggestions],
+    ]
+    suggestions_path.write_text("\n".join(lines))
+
+
 def _render_base_md(resume: Resume) -> str:
     """Render resume to markdown, showing all bullet variants."""
-    lines: list[str] = [f"# {resume.name}", ""]
+    lines: list[str] = [f"# {resume.name}"]
+    if resume.headline:
+        lines.append(resume.headline)
+    lines.append("")
 
     contact = " | ".join(filter(None, [resume.email, resume.phone, resume.linkedin, resume.github, resume.location]))
     lines += [contact, ""]
@@ -151,6 +182,46 @@ def _render_base_md(resume: Resume) -> str:
     return "\n".join(lines)
 
 
+def _render_originals_only_md(resume: Resume) -> str:
+    """Render resume to markdown with each bullet's original wording only —
+    no variant rephrasings. All variants preserve the same underlying
+    accomplishment, so they're pure redundancy for anything that only needs
+    to judge overall fit rather than pick a specific wording."""
+    lines: list[str] = [f"# {resume.name}"]
+    if resume.headline:
+        lines.append(resume.headline)
+    lines.append("")
+
+    if resume.summary:
+        lines += ["## Summary", resume.summary, ""]
+
+    lines += ["## Skills", ", ".join(resume.skills), ""]
+
+    lines += ["## Experience"]
+    for exp in resume.experience:
+        loc = f" — {exp.location}" if exp.location else ""
+        lines += [f"### {exp.title} | {exp.company}{loc}", f"*{exp.dates}*", ""]
+        for bp in exp.bullets:
+            lines += [f"- {bp.original}"]
+        lines.append("")
+
+    lines += ["## Education"]
+    for edu in resume.education:
+        gpa = f" | GPA: {edu.gpa}" if edu.gpa else ""
+        lines += [f"### {edu.degree} | {edu.institution}", f"*{edu.dates}{gpa}*", ""]
+
+    lines += ["## Projects"]
+    for proj in resume.projects:
+        lines += [f"### {proj.name}"]
+        if proj.description:
+            lines += [proj.description]
+        for bp in proj.bullets:
+            lines += [f"- {bp.original}"]
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 def _parse_base_md(md_text: str) -> Resume:
     """Parse a base_resume.md — as produced by _render_base_md, including any
     manual edits made on top of it — back into a Resume. Inverse of _render_base_md."""
@@ -158,9 +229,18 @@ def _parse_base_md(md_text: str) -> Resume:
 
     preamble_content = [line for line in preamble if line.strip()]
     name = preamble_content[0].lstrip("#").strip()
-    contact = _parse_contact_line(preamble_content[1]) if len(preamble_content) > 1 else {
-        "email": "", "phone": "", "linkedin": None, "github": None, "location": None,
-    }
+    default_contact = {"email": "", "phone": "", "linkedin": "", "github": "", "location": ""}
+    if len(preamble_content) >= 3:
+        # name, headline, contact
+        headline: str | None = preamble_content[1]
+        contact = _parse_contact_line(preamble_content[2])
+    elif len(preamble_content) == 2:
+        # name, contact — no headline
+        headline = None
+        contact = _parse_contact_line(preamble_content[1])
+    else:
+        headline = None
+        contact = default_contact
 
     summary_lines = [line for line in sections.get("Summary", []) if line.strip()]
     summary = "\n".join(summary_lines) if summary_lines else None
@@ -222,6 +302,7 @@ def _parse_base_md(md_text: str) -> Resume:
         linkedin=contact["linkedin"],
         github=contact["github"],
         location=contact["location"],
+        headline=headline,
         summary=summary,
         skills=skills,
         experience=experience,
@@ -276,11 +357,11 @@ def _find_dates_line(lines: list[str]) -> str:
     return line.strip().strip("*")
 
 
-def _parse_contact_line(line: str) -> dict[str, str | None]:
+def _parse_contact_line(line: str) -> dict[str, str]:
     parts = [p.strip() for p in line.split("|")]
     email = parts[0] if len(parts) > 0 else ""
     phone = parts[1] if len(parts) > 1 else ""
-    linkedin = github = location = None
+    linkedin = github = location = ""
     for extra in parts[2:]:
         low = extra.lower()
         if "linkedin" in low:

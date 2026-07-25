@@ -11,9 +11,12 @@ def build(raw_text: str) -> str:
   "name": str,
   "email": str,
   "phone": str,
-  "linkedin": str | null,
-  "github": str | null,
-  "location": str | null,
+  "linkedin": str,   // "" if the resume does not list one — never invent a URL
+  "github": str,     // "" if the resume does not list one — never invent a URL
+  "location": str,   // "" if the resume does not list one — never invent one
+  "headline": str | null,  // title line directly under the name (e.g. "Senior Data
+                            // Engineer"), ONLY if literally present in the source —
+                            // null if the resume has no such line. Never invent one.
   "summary": str | null,
   "skills": [str],
   "experience": [

@@ -1,22 +1,26 @@
 from pathlib import Path
 
 import anthropic
+import pydantic
 from rich import print as rprint
 from slugify import slugify
 
 from resume_agent.config import settings
+from resume_agent.errors import InvalidJobDescriptionError, LLMResponseError
 from resume_agent.models.job import JobDescription
-from resume_agent.prompts import extract_jd, match_resume, tailor_resume
-from resume_agent.tools.llm import extract_json, extract_text
+from resume_agent.pipelines.setup import _parse_base_md, _render_originals_only_md
+from resume_agent.prompts import assess_fit, extract_jd, tailor_resume
+from resume_agent.tools.llm import call_llm_json, call_llm_text
 from resume_agent.tools.page_validator import is_one_page
 from resume_agent.tools.pdf_exporter import markdown_to_pdf
 from resume_agent.tools.web_scraper import fetch_job_text
 
 
-def run_tailor(url: str, company: str, role: str) -> Path:
+def run_tailor(url: str, company: str, role: str) -> Path | None:
     """
     Per-job pipeline: URL + base resume → tailored PDF.
-    Returns path to the output PDF.
+    Returns path to the output PDF, or None if the fit assessment recommends
+    passing on this job (tailoring is skipped entirely in that case).
     """
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     slug = slugify(f"{company}-{role}")
@@ -24,16 +28,34 @@ def run_tailor(url: str, company: str, role: str) -> Path:
     # ── Scrape & extract JD ──
     rprint("[bold]Step 1:[/bold] Fetching job description...")
     raw_jd = fetch_job_text(url)
+    if len(raw_jd.strip()) < settings.min_jd_chars:
+        raise InvalidJobDescriptionError(
+            f"Fetched page from {url} has only {len(raw_jd.strip())} characters of text "
+            f"(expected at least {settings.min_jd_chars}) — this doesn't look like a "
+            "real job posting. The page may require JavaScript, be behind a login wall, "
+            "or the scrape may have failed silently."
+        )
 
     rprint("[bold]Step 2:[/bold] Extracting structured JD data...")
-    msg = client.messages.create(
-        model=settings.claude_model,
-        max_tokens=2048,
+    jd_data = call_llm_json(
+        client,
         system=extract_jd.SYSTEM,
-        messages=[{"role": "user", "content": extract_jd.build(raw_jd, company, role)}],
+        prompt=extract_jd.build(raw_jd, company, role),
+        max_tokens=2048,
     )
-    jd_data = extract_json(msg)
-    jd = JobDescription(company=company, role=role, url=url, slug=slug, raw_text=raw_jd, **jd_data)
+    if not jd_data.get("looks_like_a_job_posting", True):
+        raise InvalidJobDescriptionError(
+            f"The content fetched from {url} doesn't look like an actual job "
+            "description (e.g. an error page, login wall, or placeholder content)."
+        )
+    try:
+        jd = JobDescription(
+            company=company, role=role, url=url, slug=slug, raw_text=raw_jd, **jd_data
+        )
+    except pydantic.ValidationError as e:
+        raise LLMResponseError(
+            f"The JD extractor returned data that didn't match the expected shape: {e}"
+        ) from e
 
     # Write job.md
     jobs_dir = Path(settings.data_dir) / "jobs"
@@ -45,32 +67,30 @@ def run_tailor(url: str, company: str, role: str) -> Path:
     # ── Load base resume ──
     base_md = Path(settings.base_resume_path).read_text()
 
-    # ── Match & score ──
-    rprint("[bold]Step 3:[/bold] Scoring resume-to-JD fit...")
-    # (Simplified inline; could be its own prompt module)
-    score_msg = client.messages.create(
-        model=settings.claude_model,
+    # ── Assess fit ──
+    rprint("[bold]Step 3:[/bold] Assessing resume-to-JD fit...")
+    resume_for_assessment = _render_originals_only_md(_parse_base_md(base_md))
+    fit = call_llm_json(
+        client,
+        system=assess_fit.SYSTEM,
+        prompt=assess_fit.build(resume_for_assessment, jd_path.read_text()),
         max_tokens=512,
-        messages=[{"role": "user", "content": (
-            f"Score 0.0–1.0 how well this resume matches the job. "
-            f"Return JSON: {{\"score\": float, \"notes\": str}}\n\n"
-            f"JOB:\n{jd_path.read_text()}\n\nRESUME (excerpt):\n{base_md[:3000]}"
-        )}],
     )
-    score_data = extract_json(score_msg)
-    fit_score: float = score_data["score"]
-    fit_notes: str   = score_data["notes"]
-    rprint(f"  Fit score: [bold]{fit_score:.0%}[/bold] — {fit_notes}")
+    should_apply = fit["fit_score"] >= settings.min_fit_score
+    rprint(f"  Assessment: [bold]{'APPLY' if should_apply else 'PASS'}[/bold] — {fit['reasoning']}")
 
-    if fit_score < 0.4:
-        rprint("[yellow]Warning:[/yellow] Low fit score. Consider adding relevant experience before applying.")
+    if not should_apply:
+        rprint("[yellow]Skipping tailoring — recommendation is PASS.[/yellow]")
+        return None
 
     # ── Tailor & validate ──
     rprint("[bold]Step 4:[/bold] Tailoring resume...")
     output_dir = Path(settings.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    tailored_md = _tailor_with_page_limit(client, base_md, jd_path.read_text(), fit_score, slug, output_dir)
+    tailored_md = _tailor_with_page_limit(
+        client, base_md, jd_path.read_text(), fit["gaps"], slug, output_dir
+    )
 
     # Write final markdown
     md_path = output_dir / f"{slug}.md"
@@ -88,32 +108,30 @@ def _tailor_with_page_limit(
     client: anthropic.Anthropic,
     base_md: str,
     jd_md: str,
-    fit_score: float,
+    gaps: list[str],
     slug: str,
     output_dir: Path,
 ) -> str:
     """Tailor the resume, retrying with trim passes until it fits on one page."""
     for trim_pass in range(settings.page_trim_attempts):
-        msg = client.messages.create(
-            model=settings.claude_model,
-            max_tokens=4096,
+        tailored_md = call_llm_text(
+            client,
             system=tailor_resume.SYSTEM,
-            messages=[{"role": "user", "content": tailor_resume.build(
-                base_md, jd_md, fit_score, trim_pass=trim_pass
-            )}],
+            prompt=tailor_resume.build(base_md, jd_md, gaps, trim_pass=trim_pass),
+            max_tokens=4096,
         )
-        tailored_md = extract_text(msg)
 
         # Quick page check via temp PDF
         tmp_pdf = output_dir / f"_{slug}_tmp.pdf"
-        from resume_agent.tools.pdf_exporter import markdown_to_pdf
         markdown_to_pdf(tailored_md, tmp_pdf)
 
         if is_one_page(tmp_pdf):
             tmp_pdf.unlink(missing_ok=True)
             return tailored_md
 
-        rprint(f"  [yellow]Trim pass {trim_pass + 1}:[/yellow] Output exceeded one page, retrying...")
+        rprint(
+            f"  [yellow]Trim pass {trim_pass + 1}:[/yellow] Output exceeded one page, retrying..."
+        )
 
     tmp_pdf.unlink(missing_ok=True)
     rprint("[red]Warning:[/red] Could not fit to one page after max attempts. Using last output.")
@@ -130,6 +148,9 @@ def _render_jd_md(jd: JobDescription) -> str:
         "",
         "## Preferred Skills",
         *[f"- {s}" for s in jd.preferred_skills],
+        "",
+        "## Reinforced Requirements (repeated in both sections — likely interview focus)",
+        *[f"- {s}" for s in jd.reinforced_requirements],
         "",
         "## Responsibilities",
         *[f"- {r}" for r in jd.responsibilities],

@@ -1,6 +1,8 @@
 import httpx
 from bs4 import BeautifulSoup
 
+from resume_agent.errors import ScrapingError
+
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -12,8 +14,11 @@ _REMOVE_TAGS = ["script", "style", "nav", "footer", "header", "aside", "noscript
 
 def fetch_job_text(url: str, timeout: float = 15.0) -> str:
     """Fetch a URL and return readable text, stripping boilerplate HTML."""
-    resp = httpx.get(url, headers=_HEADERS, timeout=timeout, follow_redirects=True)
-    resp.raise_for_status()
+    try:
+        resp = httpx.get(url, headers=_HEADERS, timeout=timeout, follow_redirects=True)
+        resp.raise_for_status()
+    except httpx.HTTPError as e:
+        raise ScrapingError(f"Failed to fetch job posting from {url}: {e}") from e
 
     soup = BeautifulSoup(resp.text, "html.parser")
     for tag in soup(_REMOVE_TAGS):

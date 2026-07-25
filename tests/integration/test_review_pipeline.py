@@ -3,12 +3,14 @@ from unittest.mock import MagicMock, patch
 from resume_agent.models.resume import BulletPoint, ExperienceEntry, Resume
 from resume_agent.pipelines import setup as setup_pipeline
 from resume_agent.pipelines.setup import run_review_base
-from resume_agent.prompts import rewrite_bullets
+from resume_agent.prompts import rewrite_bullets, suggest_adjacent_skills
 
 EXISTING_RESUME = Resume(
     name="Jordan Rivera",
     email="jordan@example.com",
     phone="555-0100",
+    linkedin="",
+    github="",
     location="Remote",
     summary="Senior engineer.",
     skills=["Python"],
@@ -37,6 +39,14 @@ def _fake_message(text: str):
     return msg
 
 
+def _fake_create(*, system=None, **kwargs):
+    if system == rewrite_bullets.SYSTEM:
+        return _fake_message('["Backfilled variant one", "Backfilled variant two"]')
+    if system == suggest_adjacent_skills.SYSTEM:
+        return _fake_message('{"suggestions": []}')
+    raise AssertionError(f"Unexpected system prompt: {system}")
+
+
 def test_review_only_generates_variants_for_bullets_missing_them(tmp_path, monkeypatch):
     from resume_agent.config import settings
 
@@ -45,18 +55,19 @@ def test_review_only_generates_variants_for_bullets_missing_them(tmp_path, monke
     monkeypatch.setattr(settings, "base_resume_path", str(base_path))
 
     fake_client = MagicMock()
-    fake_client.messages.create.return_value = _fake_message(
-        '["Backfilled variant one", "Backfilled variant two"]'
-    )
+    fake_client.messages.create.side_effect = _fake_create
 
     with patch.object(setup_pipeline.anthropic, "Anthropic", return_value=fake_client):
         run_review_base()
 
-    # Only the bullet that had no variants should trigger an LLM call.
-    assert fake_client.messages.create.call_count == 1
-    call_kwargs = fake_client.messages.create.call_args.kwargs
-    assert call_kwargs["system"] == rewrite_bullets.SYSTEM
-    assert "Manually added bullet, no variants yet" in call_kwargs["messages"][0]["content"]
+    # One call for the missing-variant bullet, one for the skill-suggestion pass.
+    assert fake_client.messages.create.call_count == 2
+    rewrite_call = next(
+        c
+        for c in fake_client.messages.create.call_args_list
+        if c.kwargs["system"] == rewrite_bullets.SYSTEM
+    )
+    assert "Manually added bullet, no variants yet" in rewrite_call.kwargs["messages"][0]["content"]
 
     refreshed = setup_pipeline._parse_base_md(base_path.read_text())
     bullets = refreshed.experience[0].bullets

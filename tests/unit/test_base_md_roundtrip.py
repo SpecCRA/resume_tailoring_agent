@@ -52,3 +52,9 @@ def test_manually_added_bullet_survives_round_trip_without_variants():
     new_bullet = parsed.experience[0].bullets[1]
     assert new_bullet.original == "Freshly added bullet with no variants yet"
     assert new_bullet.variants == []
+
+
+def test_headline_round_trips_when_present():
+    resume_with_headline = RESUME.model_copy(update={"headline": "Senior Data Engineer"})
+    parsed = _parse_base_md(_render_base_md(resume_with_headline))
+    assert parsed == resume_with_headline

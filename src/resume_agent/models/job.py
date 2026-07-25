@@ -9,5 +9,6 @@ class JobDescription(BaseModel):
     raw_text: str
     required_skills: list[str]
     preferred_skills: list[str]
+    reinforced_requirements: list[str]  # required skills echoed in responsibilities too
     responsibilities: list[str]
     ats_keywords: list[str]  # Critical terms for keyword matching

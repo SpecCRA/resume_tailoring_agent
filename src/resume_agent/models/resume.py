@@ -29,35 +29,18 @@ class ProjectEntry(BaseModel):
 
 
 class Resume(BaseModel):
-    # Contact
+    # Contact — always present; use "" (not None) when the source resume lacks a field.
     name: str
     email: str
     phone: str
-    linkedin: str | None = None
-    github: str | None = None
-    location: str | None = None
+    linkedin: str
+    github: str
+    location: str
 
     # Content
+    headline: str | None = None  # title line under the name, e.g. "Senior Data Engineer"
     summary: str | None = None
     skills: list[str]
     experience: list[ExperienceEntry]
     education: list[EducationEntry]
     projects: list[ProjectEntry]
-
-
-class TailoredResume(BaseModel):
-    """Subset of Resume with only the selected bullets for a given job."""
-
-    name: str
-    email: str
-    phone: str
-    linkedin: str | None = None
-    github: str | None = None
-    location: str | None = None
-    summary: str
-    skills: list[str]
-    experience: list[ExperienceEntry]
-    education: list[EducationEntry]
-    projects: list[ProjectEntry]
-    fit_score: float  # 0.0 – 1.0
-    fit_notes: str  # LLM explanation of match quality

@@ -18,6 +18,7 @@ suggestions) — variants exist for bullet *selection*, not judgment.
 
 import re
 from pathlib import Path
+from typing import Any
 
 import anthropic
 import pydantic
@@ -95,37 +96,41 @@ def run_review_base() -> Path:
 
 
 def _generate_all_bullet_variants(client: anthropic.Anthropic, resume: Resume) -> None:
-    """Backfill bullet variants for every experience/project bullet that lacks them."""
+    """Backfill bullet variants for every experience/project bullet that lacks them,
+    in a single batched call rather than one call per bullet."""
+    items: list[dict[str, Any]] = []
+    targets: list[BulletPoint] = []
+
+    def _collect(bullets: list[BulletPoint], context: str, n: int) -> None:
+        for bullet in bullets:
+            if bullet.variants:
+                continue
+            items.append({"id": len(items), "bullet": bullet.original, "context": context, "n": n})
+            targets.append(bullet)
+
     for exp in resume.experience:
-        ctx = f"{exp.title} at {exp.company}"
-        exp.bullets = _ensure_bullet_variants(
-            client, exp.bullets, ctx, settings.max_bullet_variants
-        )
-
+        _collect(exp.bullets, f"{exp.title} at {exp.company}", settings.max_bullet_variants)
     for proj in resume.projects:
-        ctx = f"Project: {proj.name}"
-        proj.bullets = _ensure_bullet_variants(
-            client, proj.bullets, ctx, settings.max_project_bullet_variants
-        )
+        _collect(proj.bullets, f"Project: {proj.name}", settings.max_project_bullet_variants)
 
+    if not items:
+        return
 
-def _ensure_bullet_variants(
-    client: anthropic.Anthropic, bullets: list[BulletPoint], context: str, n: int
-) -> list[BulletPoint]:
-    """Generate variants only for bullets that don't already have them."""
-    result: list[BulletPoint] = []
-    for bullet in bullets:
-        if bullet.variants:
-            result.append(bullet)
-            continue
-        variants = call_llm_json(
-            client,
-            system=rewrite_bullets.SYSTEM,
-            prompt=rewrite_bullets.build(bullet.original, context, n),
-            max_tokens=2048,
+    result = call_llm_json(
+        client,
+        system=rewrite_bullets.SYSTEM,
+        prompt=rewrite_bullets.build(items),
+        max_tokens=1024 + 300 * len(items),
+    )
+    by_id = {b["id"]: b["variants"] for b in result["bullets"]}
+    missing = [item["id"] for item in items if item["id"] not in by_id]
+    if missing:
+        raise LLMResponseError(
+            f"Bullet-variant response was missing variants for id(s) {missing} "
+            f"out of {len(items)} requested."
         )
-        result.append(BulletPoint(original=bullet.original, variants=variants))
-    return result
+    for item, bullet in zip(items, targets):
+        bullet.variants = by_id[item["id"]]
 
 
 def _write_skill_suggestions(client: anthropic.Anthropic, resume: Resume, base_path: Path) -> None:

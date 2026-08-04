@@ -63,11 +63,21 @@ def _fake_message(text: str):
     return msg
 
 
+# BIG_RESUME has 6 experience entries x 6 bullets + 4 projects x 4 bullets = 52
+# bullets needing variants, all collected into a single batched rewrite_bullets call.
+_TOTAL_BULLETS = 6 * 6 + 4 * 4
+
+
 def _fake_create(*, system, **kwargs):
     if system == parse_resume.SYSTEM:
         return _fake_message(json.dumps(BIG_RESUME))
     if system == rewrite_bullets.SYSTEM:
-        return _fake_message(json.dumps(["variant one", "variant two", "variant three"]))
+        return _fake_message(json.dumps({
+            "bullets": [
+                {"id": i, "variants": ["variant one", "variant two", "variant three"]}
+                for i in range(_TOTAL_BULLETS)
+            ]
+        }))
     if system == suggest_adjacent_skills.SYSTEM:
         return _fake_message(json.dumps({"suggestions": []}))
     raise AssertionError(f"Unexpected system prompt: {system}")

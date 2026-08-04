@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock, patch
 
 from resume_agent.models.resume import BulletPoint, ExperienceEntry, Resume
@@ -41,7 +42,9 @@ def _fake_message(text: str):
 
 def _fake_create(*, system=None, **kwargs):
     if system == rewrite_bullets.SYSTEM:
-        return _fake_message('["Backfilled variant one", "Backfilled variant two"]')
+        return _fake_message(json.dumps({
+            "bullets": [{"id": 0, "variants": ["Backfilled variant one", "Backfilled variant two"]}]
+        }))
     if system == suggest_adjacent_skills.SYSTEM:
         return _fake_message('{"suggestions": []}')
     raise AssertionError(f"Unexpected system prompt: {system}")

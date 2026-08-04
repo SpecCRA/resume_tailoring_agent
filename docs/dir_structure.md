@@ -35,9 +35,9 @@ resume-agent/
 │       │   ├── parse_resume.py
 │       │   ├── rewrite_bullets.py
 │       │   ├── suggest_adjacent_skills.py
-│       │   ├── extract_jd.py
-│       │   ├── assess_fit.py
-│       │   └── tailor_resume.py
+│       │   ├── extract_and_assess.py
+│       │   ├── tailor_resume.py
+│       │   └── review_output.py
 │       │
 │       └── pipelines/           # Orchestration logic
 │           ├── __init__.py

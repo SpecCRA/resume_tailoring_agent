@@ -1,7 +1,8 @@
-"""CLI entry point (Typer). Exposes three commands — `setup`, `review`, `tailor` —
-each a thin wrapper around a pipeline function in `pipelines/`. All three catch
-`ResumeAgentError` (see `errors.py`) and print a clean message instead of letting
-a scraping/LLM/validation failure surface as a raw traceback.
+"""CLI entry point (Typer). Exposes four commands — `setup`, `review`, `tailor`,
+`export` — each a thin wrapper around a pipeline function in `pipelines/`. All
+four catch `ResumeAgentError` (see `errors.py`) and print a clean message
+instead of letting a scraping/LLM/validation failure surface as a raw
+traceback.
 """
 
 from pathlib import Path
@@ -50,6 +51,25 @@ def tailor(
     from resume_agent.pipelines.tailor import run_tailor
     try:
         run_tailor(url, company, role)
+    except ResumeAgentError as e:
+        rprint(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from e
+
+
+@app.command()
+def export(
+    markdown: Annotated[Path, typer.Argument(help="Path to an existing markdown resume")],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Output PDF path (defaults next to the input file)"),
+    ] = None,
+) -> None:
+    """Export an existing markdown resume straight to PDF — no LLM calls."""
+    from resume_agent.errors import ResumeAgentError
+    from resume_agent.pipelines.export import run_export
+    try:
+        pdf_path = run_export(str(markdown), str(output) if output else None)
+        rprint(f"[green]Done![/green] PDF → {pdf_path}")
     except ResumeAgentError as e:
         rprint(f"[red]Error:[/red] {e}")
         raise typer.Exit(code=1) from e

@@ -20,13 +20,32 @@ from resume_agent.config import settings
 from resume_agent.errors import LLMResponseError
 
 
-def call_llm_text(client: anthropic.Anthropic, *, system: str, prompt: str, max_tokens: int) -> str:
-    """Call Claude with a system+user prompt and return the response text."""
+def call_llm_text(
+    client: anthropic.Anthropic,
+    *,
+    system: str,
+    prompt: str,
+    max_tokens: int,
+    effort: str | None = None,
+) -> str:
+    """Call Claude with a system+user prompt and return the response text.
+
+    `effort` ("low"/"medium"/"high"/"xhigh"/"max"), when given, bounds how hard
+    this model's adaptive thinking works before writing output — without it,
+    thinking has no explicit cap and can consume the entire max_tokens budget
+    on a hard prompt, leaving nothing for the actual text output (a
+    `stop_reason='max_tokens'` response containing only a thinking block).
+    """
     message = client.messages.create(
         model=settings.claude_model,
         max_tokens=max_tokens,
         system=system,
         messages=[{"role": "user", "content": prompt}],
+        **(
+            {"thinking": {"type": "adaptive"}, "output_config": {"effort": effort}}
+            if effort is not None
+            else {}
+        ),
     )
     try:
         return extract_text(message)

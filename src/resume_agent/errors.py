@@ -21,3 +21,11 @@ class InvalidJobDescriptionError(ResumeAgentError):
 
 class LLMResponseError(ResumeAgentError):
     """An LLM call returned output that couldn't be parsed or validated."""
+
+
+class MarkdownFileNotFoundError(ResumeAgentError):
+    """A given markdown resume path doesn't exist."""
+
+
+class PageLimitExceededError(ResumeAgentError):
+    """The exported PDF doesn't fit on a single page."""

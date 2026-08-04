@@ -119,13 +119,18 @@ uv run resume-agent tailor "https://jobs.example.com/posting/123" \
 This will:
 1. Scrape the job posting and reject it early (with a clear error) if the page
    looks too short or otherwise doesn't look like an actual job description
-2. Extract structured data from it → `data/jobs/<company>-<role>.md`
-3. Assess how well your base resume fits it (fit score + reasoning + gaps). If
+2. In one combined call, extract structured data from it → `data/jobs/<company>-<role>.md`
+   and assess how well your base resume fits it (fit score + reasoning + gaps). If
    the score is below `MIN_FIT_SCORE`, the run stops here — **no resume is
    generated** — so you're not spending tailoring effort on a job you'd pass on
-4. Otherwise, rewrite/select bullets tailored to the job, retrying up to
+3. Otherwise, rewrite/select bullets tailored to the job, retrying up to
    `PAGE_TRIM_ATTEMPTS` times if the result doesn't fit one page
-5. Write `output/<company>-<role>.md` and `output/<company>-<role>.pdf`
+4. Write `output/<company>-<role>.md` and `output/<company>-<role>.pdf`
+5. Review the finished resume against the job description and write
+   `output/<company>-<role>.assessment.md` — a post-tailoring fit score, ATS
+   keyword coverage, and a per-bullet relevance breakdown (flagging weak bullets
+   worth cutting on a future edit). This report is never appended to the resume
+   itself — it's a separate file for you to read, not something sent to employers
 
 ## Typical workflow
 

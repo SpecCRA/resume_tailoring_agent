@@ -1,6 +1,6 @@
 """Fetches a job-posting URL and returns its readable text, with obvious
 boilerplate tags (nav/footer/script/etc.) stripped, before it's handed to
-`prompts/extract_jd.py`. Network/HTTP failures are converted to `ScrapingError`
+`prompts/extract_and_assess.py`. Network/HTTP failures are converted to `ScrapingError`
 rather than a raw `httpx` exception; the *content* of what comes back (e.g. an
 empty JS-rendered page) is validated separately, in `pipelines/tailor.py`.
 """

@@ -23,20 +23,30 @@ RESUME = Resume(
             dates="2019-2023",
             location="NYC",
             bullets=[
-                BulletPoint(original="Shipped the thing", variants=["Delivered the thing", "Built the thing"]),
+                BulletPoint(
+                    original="Shipped the thing",
+                    variants=["Delivered the thing", "Built the thing"],
+                ),
                 BulletPoint(original="Freshly added bullet with no variants yet"),
             ],
         ),
     ],
     education=[
-        EducationEntry(institution="State University", degree="B.S. Computer Science", dates="2011-2015", gpa=3.8),
+        EducationEntry(
+            institution="State University",
+            degree="B.S. Computer Science",
+            dates="2011-2015",
+            gpa=3.8,
+        ),
     ],
     projects=[
         ProjectEntry(
             name="Side Project",
             description="A weekend build.",
             url="https://example.com/project",
-            bullets=[BulletPoint(original="Built a thing end to end", variants=["Engineered a thing"])],
+            bullets=[
+                BulletPoint(original="Built a thing end to end", variants=["Engineered a thing"])
+            ],
         ),
     ],
 )

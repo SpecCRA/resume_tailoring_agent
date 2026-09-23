@@ -15,6 +15,11 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str
     claude_model: str = "claude-sonnet-5"
+    # Model used for the (opt-in) multi-perspective critique pipeline — deliberately
+    # a separate setting from claude_model so the critique personas can run on a
+    # different model than the one that wrote the tailored resume, avoiding
+    # correlated blind spots between generator and evaluator.
+    eval_model: str = "claude-sonnet-5"
 
     # Paths
     data_dir: str = "data"

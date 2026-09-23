@@ -1,8 +1,8 @@
-"""CLI entry point (Typer). Exposes four commands — `setup`, `review`, `tailor`,
-`export` — each a thin wrapper around a pipeline function in `pipelines/`. All
-four catch `ResumeAgentError` (see `errors.py`) and print a clean message
-instead of letting a scraping/LLM/validation failure surface as a raw
-traceback.
+"""CLI entry point (Typer). Exposes five commands — `setup`, `review`, `tailor`,
+`export`, `critique` — each a thin wrapper around a pipeline function in
+`pipelines/`. All five catch `ResumeAgentError` (see `errors.py`) and print a
+clean message instead of letting a scraping/LLM/validation failure surface as
+a raw traceback.
 """
 
 from pathlib import Path
@@ -70,6 +70,26 @@ def export(
     try:
         pdf_path = run_export(str(markdown), str(output) if output else None)
         rprint(f"[green]Done![/green] PDF → {pdf_path}")
+    except ResumeAgentError as e:
+        rprint(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from e
+
+
+@app.command()
+def critique(
+    slug: Annotated[
+        str,
+        typer.Argument(help="Job slug, e.g. acme-corp-data-engineer (output/<slug>.md)"),
+    ],
+) -> None:
+    """Run a 5-persona critique (ATS parser, recruiter, hiring manager, integrity
+    auditor, narrative coherence) on an already-tailored resume. Opt-in — not run
+    automatically by `tailor` — since it's five extra LLM calls and advisory only."""
+    from resume_agent.errors import ResumeAgentError
+    from resume_agent.pipelines.critique import run_critique
+    try:
+        report_path = run_critique(slug)
+        rprint(f"[green]Done![/green] Critique → {report_path}")
     except ResumeAgentError as e:
         rprint(f"[red]Error:[/red] {e}")
         raise typer.Exit(code=1) from e

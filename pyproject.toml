@@ -42,7 +42,10 @@ packages = ["src/resume_agent"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts   = "--cov=src/resume_agent --cov-report=term-missing"
+addopts   = "--cov=src/resume_agent --cov-report=term-missing -m 'not eval'"
+markers = [
+    "eval: hits the real Anthropic API against hand-built fixtures to check critique-persona prompt quality across one or more models. Costs money and is not run by default — use `pytest -m eval tests/evals` to run it explicitly.",
+]
 
 [tool.ruff]
 src        = ["src"]

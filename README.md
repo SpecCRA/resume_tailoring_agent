@@ -60,7 +60,8 @@ Optional settings (defaults shown) — see
 
 | Variable                    | Default                     | Description                                        |
 |------------------------------|------------------------------|-----------------------------------------------------|
-| `CLAUDE_MODEL`                | `claude-sonnet-5`            | Model used for all LLM calls                        |
+| `CLAUDE_MODEL`                | `claude-sonnet-5`            | Model used for the main setup/tailor pipeline        |
+| `EVAL_MODEL`                  | `claude-sonnet-5`            | Model used for the `critique` command's five personas — deliberately overridable to differ from `CLAUDE_MODEL`, so the evaluator isn't the same model that wrote the resume |
 | `DATA_DIR`                    | `data`                       | Root dir for base resume + job descriptions          |
 | `OUTPUT_DIR`                  | `output`                     | Where tailored `.md`/`.pdf` files are written        |
 | `BASE_RESUME_PATH`            | `data/base/resume_base.md`   | Path to the generated base resume                    |
@@ -132,6 +133,37 @@ This will:
    worth cutting on a future edit). This report is never appended to the resume
    itself — it's a separate file for you to read, not something sent to employers
 
+### `critique` — multi-perspective review of a tailored resume (opt-in)
+
+```bash
+uv run resume-agent critique acme-corp-senior-data-engineer
+```
+
+| Argument | Required | Description                                                    |
+|----------|----------|------------------------------------------------------------------|
+| `slug`   | yes      | The `<slug>` from an already-tailored `output/<slug>.md` (i.e. `company-role`) |
+
+Runs five independent persona reviews, concurrently, against an
+already-tailored resume — each scoped to a distinct failure mode the
+automatic step-5 review doesn't check:
+
+- **ATS Parser Simulation** — structural parseability (headers, dates,
+  formatting), not keyword presence
+- **Recruiter 6-Second Skim** — prominence/ordering: is the strongest
+  qualification visible without scrolling
+- **Hiring Manager Technical Depth** — is each bullet's claimed scope/impact
+  specific and credible, or vague/buzzword-only
+- **Integrity Auditor** — an independent fabrication check, run without the
+  job description so it can't rationalize a claim just because the JD wants it
+- **Narrative Coherence** — does the sequence of roles/projects read as a
+  deliberate throughline
+
+Writes `output/<slug>.critique.md`, including a "Cross-Persona Agreement"
+section when two or more personas independently flag the same spot. Not run
+automatically by `tailor` — it's five extra LLM calls and purely advisory, so
+it's a separate command you run only when you want the extra scrutiny. Runs on
+`EVAL_MODEL`, not `CLAUDE_MODEL` (see Configuration above).
+
 ## Typical workflow
 
 ```bash
@@ -149,22 +181,33 @@ uv run resume-agent tailor "<job-url>" -c "Company" -r "Role Title"
 
 ```
 src/resume_agent/
-├── main.py          # CLI entrypoint (typer) — setup / review / tailor
+├── main.py          # CLI entrypoint (typer) — setup / review / tailor / export / critique
 ├── errors.py        # Shared exception hierarchy (ResumeAgentError and friends)
 ├── config/          # Pydantic settings, loaded from .env
 ├── models/          # Resume, JobDescription data contracts
 ├── tools/           # PDF read/export, page counting, job-page scraping, LLM call wrapper
 ├── prompts/         # LLM prompt builders for each pipeline step
-└── pipelines/       # setup.py and tailor.py orchestration
+└── pipelines/       # setup.py, tailor.py, export.py, critique.py orchestration
 ```
 
 ## Development
 
 ```bash
 uv sync --dev
-uv run pytest              # run tests
+uv run pytest              # run unit + integration tests (mocked LLM calls, no API key needed)
 uv run ruff check .        # lint
 uv run mypy .              # type check
+```
+
+`tests/evals/` is a separate suite that hits the real Anthropic API to check
+the `critique` personas' prompt quality (recall/precision against hand-built
+fixtures with planted defects) — it costs money and isn't run by default:
+
+```bash
+uv run pytest -m eval tests/evals --no-cov
+
+# Check more than one model at once (comma-separated):
+EVAL_MODELS=claude-sonnet-5,claude-haiku-4-5-20251001 uv run pytest -m eval tests/evals --no-cov
 ```
 
 ## Roadmap

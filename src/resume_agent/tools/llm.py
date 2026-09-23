@@ -27,6 +27,7 @@ def call_llm_text(
     prompt: str,
     max_tokens: int,
     effort: str | None = None,
+    model: str | None = None,
 ) -> str:
     """Call Claude with a system+user prompt and return the response text.
 
@@ -35,9 +36,13 @@ def call_llm_text(
     thinking has no explicit cap and can consume the entire max_tokens budget
     on a hard prompt, leaving nothing for the actual text output (a
     `stop_reason='max_tokens'` response containing only a thinking block).
+
+    `model` overrides `settings.claude_model` for this call — used by the
+    critique pipeline to run evaluator personas on `settings.eval_model`
+    instead of whatever model wrote the resume being evaluated.
     """
     message = client.messages.create(
-        model=settings.claude_model,
+        model=model or settings.claude_model,
         max_tokens=max_tokens,
         system=system,
         messages=[{"role": "user", "content": prompt}],
@@ -53,11 +58,21 @@ def call_llm_text(
         raise LLMResponseError(str(e)) from e
 
 
-def call_llm_json(client: anthropic.Anthropic, *, system: str, prompt: str, max_tokens: int) -> Any:
+def call_llm_json(
+    client: anthropic.Anthropic,
+    *,
+    system: str,
+    prompt: str,
+    max_tokens: int,
+    model: str | None = None,
+) -> Any:
     """Call Claude with a system+user prompt and parse the response as JSON.
 
     Retries once with a corrective instruction if the first response isn't
     parseable JSON — Claude occasionally deviates from the requested format.
+
+    `model` overrides `settings.claude_model` for this call (see
+    `call_llm_text`).
     """
     last_error: Exception | None = None
     for attempt in range(2):
@@ -69,7 +84,7 @@ def call_llm_json(client: anthropic.Anthropic, *, system: str, prompt: str, max_
             "the raw JSON object described above — no markdown fences, no other text."
         )
         message = client.messages.create(
-            model=settings.claude_model,
+            model=model or settings.claude_model,
             max_tokens=max_tokens,
             system=system,
             messages=[{"role": "user", "content": current_prompt}],

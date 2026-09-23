@@ -29,3 +29,10 @@ class MarkdownFileNotFoundError(ResumeAgentError):
 
 class PageLimitExceededError(ResumeAgentError):
     """The exported PDF doesn't fit on a single page."""
+
+
+class InvalidSlugError(ResumeAgentError):
+    """A given job slug doesn't match the safe, slugified filename format
+    `tailor` produces — rejected rather than used to build a file path, since
+    an unslugified value (e.g. containing `..` or `/`) could read or write
+    outside the intended data/output directories."""

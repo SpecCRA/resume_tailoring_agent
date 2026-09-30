@@ -158,7 +158,12 @@ def _tailor_with_page_limit(
         tailored_md = call_llm_text(
             client,
             system=tailor_resume.SYSTEM,
-            prompt=tailor_resume.build(base_md, jd_md, trim_pass=trim_pass),
+            prompt=tailor_resume.build(
+                base_md,
+                jd_md,
+                trim_pass=trim_pass,
+                always_include_title=settings.always_include_experience_title,
+            ),
             max_tokens=8192,
             effort="low",
         )

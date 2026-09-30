@@ -25,12 +25,31 @@ SYSTEM = (
 )
 
 
-def build(resume_md: str, jd_md: str, trim_pass: int = 0) -> str:
+def build(
+    resume_md: str,
+    jd_md: str,
+    trim_pass: int = 0,
+    always_include_title: str | None = None,
+) -> str:
+    always_include_rule = (
+        f"""13. Always include the Experience entry titled exactly "{always_include_title}" \
+below, regardless of its relevance to this job description — never omit it, even under
+    page pressure. Give it exactly one bullet: whichever single bullet (its original
+    wording or one of its variants) is shortest and most broadly presentable. This is a
+    standing exception to rule 1's relevance-based trimming — it is not a claim that
+    this entry is relevant to the role, just that it must always appear.
+"""
+        if always_include_title
+        else ""
+    )
     trim_note = (
         f"\n\nIMPORTANT: This is trim pass {trim_pass}. The previous output exceeded one page. "
         "Remove the least-relevant bullets/experience entries and shorten descriptions "
         "until it fits on one page. Do not remove or shorten the header (name + contact) "
-        "or the Education section."
+        "or the Education section. Cut the least-relevant remaining content first — only "
+        "shorten the first-listed Experience entry or first-listed Project (the candidate's "
+        "current role and most recent project) if nothing else gets you to one page, since "
+        "those two anchor the resume regardless of how this specific posting scores them."
         if trim_pass > 0
         else ""
     )
@@ -42,8 +61,14 @@ Rules:
     entries with zero relevance to the role, and cut any skills that are irrelevant
     to this specific posting — a long undifferentiated skills list reads as
     unfocused. Select at most 2 projects — the ones most relevant to the job
-    description — and shorten the Experience section (fewer bullets per entry, or
-    omitting the least-relevant experience entries) as needed to make room for them.
+    description. Within what you keep, give an entry more bullets the more relevant
+    it is to this job description — a highly relevant entry earns a fuller section,
+    not a minimal one. The first-listed Experience entry and first-listed Project
+    (the candidate's current role and most recent project) are the two exceptions
+    to relevance-based trimming: keep them as complete as space allows regardless
+    of how relevant this specific posting makes them — they anchor the resume.
+    When space is tight, shorten or cut bullets from everything else first,
+    least-relevant first, before touching either of those two.
 2. For each remaining bullet, default to the ORIGINAL wording. Only replace it with
     one of the variants (v1, v2, ...) listed directly beneath THAT SAME bullet if the
     original does not fit the job description well and a variant is a clearly closer
@@ -102,7 +127,15 @@ Rules:
     bullet that belongs to one must never appear under the other). Before finalizing
     your output, double check every bullet you kept is still under its original
     company/project entry.
-{trim_note}
+12. The first-listed Experience entry and first-listed Project are the candidate's
+    current role and most recent project — the same two anchors from rule 1. The
+    Experience entry's bullets were written with room for one extra concrete detail
+    for exactly this reason. For either anchor, when more than one variant would be
+    a valid swap for one of its bullets, prefer the longer, more detailed variant
+    over a terser one. Do not apply this preference to any other Experience entry
+    or Project — they keep rule 2's normal preference for whichever variant's
+    framing best matches the job description.
+{always_include_rule}{trim_note}
 
 ---
 RESUME (all variants):

@@ -6,6 +6,12 @@ collaboration) — so `prompts/tailor_resume.py` has real material to choose fro
 whatever a given JD emphasizes. Never invents a metric, tool, or outcome not already
 present in the original bullet.
 
+Bullets for the candidate's most recent role (each item's `is_most_recent` flag,
+set in `pipelines/setup.py._generate_all_bullet_variants` for the first Experience
+entry only) get a longer word cap than everything else — that role is what a
+reader weights most heavily, so it's the one place extra concrete detail (not
+padding) earns its space; older roles and projects stay tightly concise.
+
 Batched rather than one call per bullet purely to cut round trips — a resume with a
 handful of jobs/projects otherwise means a handful of near-identical LLM calls, each
 re-paying the same system-prompt and rule-list overhead for a single short output.
@@ -29,7 +35,13 @@ def build(items: list[dict[str, Any]]) -> str:
 
 Vary: action verb, emphasis, phrasing style. Keep the same underlying accomplishment.
 Rules, applied independently to every bullet:
-- Start with a strong action verb, be concise (≤20 words each).
+- Start with a strong action verb. Be concise: ≤20 words for most bullets, but for
+  any bullet whose "is_most_recent" field is true (the candidate's current/most
+  recent role), allow up to ~30 words — that role gets the most weight from a
+  reader, so give it room for one extra concrete detail (a mechanism, a secondary
+  metric, scope/scale) where the source material actually supports it. This is
+  about depth, not padding: never stretch a bullet with filler, hedging, or
+  restating the same point twice just to use the extra length.
 - Quantify impact ONLY if a number, percentage, or metric already appears in that
   bullet's original text or context. Do not invent, estimate, or guess at numbers,
   scale, tools, technologies, or outcomes that aren't stated.

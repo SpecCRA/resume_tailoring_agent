@@ -38,6 +38,25 @@ def test_tailored_resume_retries_until_it_fits_one_page(tmp_path):
     assert fake_client.messages.create.call_count == 3
 
 
+def test_tailor_passes_always_include_experience_title_from_settings(tmp_path, monkeypatch):
+    from resume_agent.config import settings
+
+    monkeypatch.setattr(settings, "always_include_experience_title", "Professional Poker Player")
+
+    fake_client = MagicMock()
+    fake_client.messages.create.return_value = _fake_message("# Resume\n\nfits")
+
+    with (
+        patch("resume_agent.pipelines.tailor.markdown_to_pdf", return_value=tmp_path / "x.pdf"),
+        patch("resume_agent.pipelines.tailor.is_one_page", return_value=True),
+    ):
+        _tailor_with_page_limit(fake_client, "base md", "jd md", "slug", tmp_path)
+
+    sent_prompt = fake_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert '"Professional Poker Player"' in sent_prompt
+    assert "Always include the Experience entry titled exactly" in sent_prompt
+
+
 def test_tailor_gives_up_after_max_attempts_and_returns_last_output(tmp_path, monkeypatch):
     from resume_agent.config import settings
 

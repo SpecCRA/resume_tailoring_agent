@@ -101,15 +101,33 @@ def _generate_all_bullet_variants(client: anthropic.Anthropic, resume: Resume) -
     items: list[dict[str, Any]] = []
     targets: list[BulletPoint] = []
 
-    def _collect(bullets: list[BulletPoint], context: str, n: int) -> None:
+    def _collect(
+        bullets: list[BulletPoint], context: str, n: int, is_most_recent: bool = False
+    ) -> None:
         for bullet in bullets:
             if bullet.variants:
                 continue
-            items.append({"id": len(items), "bullet": bullet.original, "context": context, "n": n})
+            items.append({
+                "id": len(items),
+                "bullet": bullet.original,
+                "context": context,
+                "n": n,
+                "is_most_recent": is_most_recent,
+            })
             targets.append(bullet)
 
-    for exp in resume.experience:
-        _collect(exp.bullets, f"{exp.title} at {exp.company}", settings.max_bullet_variants)
+    # The first Experience entry is the candidate's most recent role (resumes
+    # are conventionally reverse-chronological, and _render_base_md/_parse_base_md
+    # preserve whatever order the base resume lists them in) — flagged so
+    # rewrite_bullets.py can allow that entry's variants to run longer, since
+    # it's the role a reader will weight most heavily.
+    for i, exp in enumerate(resume.experience):
+        _collect(
+            exp.bullets,
+            f"{exp.title} at {exp.company}",
+            settings.max_bullet_variants,
+            is_most_recent=(i == 0),
+        )
     for proj in resume.projects:
         _collect(proj.bullets, f"Project: {proj.name}", settings.max_project_bullet_variants)
 

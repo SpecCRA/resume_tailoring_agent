@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # a separate setting from claude_model so the critique personas can run on a
     # different model than the one that wrote the tailored resume, avoiding
     # correlated blind spots between generator and evaluator.
-    eval_model: str = "claude-sonnet-5"
+    eval_model: str = "claude-sonnet-5.5"
     # When set, tailor_resume.py always keeps the Experience entry with this exact
     # title (capped to one short bullet) regardless of JD relevance — a personal
     # override, not a general pipeline behavior, so it defaults to unset.

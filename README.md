@@ -61,7 +61,7 @@ Optional settings (defaults shown) — see
 | Variable                    | Default                     | Description                                        |
 |------------------------------|------------------------------|-----------------------------------------------------|
 | `CLAUDE_MODEL`                | `claude-opus-5-5`            | Model used for the main setup/tailor pipeline        |
-| `EVAL_MODEL`                  | `claude-sonnet-5`            | Model used for the `critique` command's five personas — deliberately overridable to differ from `CLAUDE_MODEL`, so the evaluator isn't the same model that wrote the resume |
+| `EVAL_MODEL`                  | `claude-sonnet-5.5`          | Model used for the `critique` command's five personas — deliberately overridable to differ from `CLAUDE_MODEL`, so the evaluator isn't the same model that wrote the resume |
 | `DATA_DIR`                    | `data`                       | Root dir for base resume + job descriptions          |
 | `OUTPUT_DIR`                  | `output`                     | Where tailored `.md`/`.pdf` files are written        |
 | `BASE_RESUME_PATH`            | `data/base/resume_base.md`   | Path to the generated base resume                    |

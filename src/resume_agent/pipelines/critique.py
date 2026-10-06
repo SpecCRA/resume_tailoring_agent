@@ -26,9 +26,9 @@ from slugify import slugify
 from resume_agent.config import settings
 from resume_agent.errors import InvalidSlugError, MarkdownFileNotFoundError
 from resume_agent.models.critique import CritiqueResult
-from resume_agent.pipelines.setup import _parse_base_md, _render_originals_only_md
 from resume_agent.prompts.critique import PERSONAS, build
 from resume_agent.tools.llm import call_llm_json
+from resume_agent.tools.resume_markdown import parse_base_md, render_originals_only_md
 
 
 def run_critique(slug: str) -> Path:
@@ -56,8 +56,8 @@ def run_critique(slug: str) -> Path:
 
     tailored_md = tailored_path.read_text()
     jd_md = jd_path.read_text()
-    base_originals_only_md = _render_originals_only_md(
-        _parse_base_md(Path(settings.base_resume_path).read_text())
+    base_originals_only_md = render_originals_only_md(
+        parse_base_md(Path(settings.base_resume_path).read_text())
     )
 
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)

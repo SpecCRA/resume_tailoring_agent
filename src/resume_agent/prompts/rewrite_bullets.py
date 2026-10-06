@@ -42,6 +42,11 @@ Rules, applied independently to every bullet:
   metric, scope/scale) where the source material actually supports it. This is
   about depth, not padding: never stretch a bullet with filler, hedging, or
   restating the same point twice just to use the extra length.
+- Use the standard abbreviation/acronym for a well-known term instead of spelling
+  it out (e.g. "LLMs" not "Large Language Models", "ETL" not "Extract, Transform,
+  Load", "API" not "Application Programming Interface") — shorter wording helps
+  stay inside the word cap above. Only spell a term out if there's no standard
+  abbreviation for it, or abbreviating it here would be ambiguous.
 - Quantify impact ONLY if a number, percentage, or metric already appears in that
   bullet's original text or context. Do not invent, estimate, or guess at numbers,
   scale, tools, technologies, or outcomes that aren't stated.

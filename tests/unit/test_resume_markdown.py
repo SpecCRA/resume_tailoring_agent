@@ -5,7 +5,7 @@ from resume_agent.models.resume import (
     ProjectEntry,
     Resume,
 )
-from resume_agent.pipelines.setup import _parse_base_md, _render_base_md
+from resume_agent.tools.resume_markdown import parse_base_md, render_base_md
 
 RESUME = Resume(
     name="Jordan Rivera",
@@ -53,12 +53,12 @@ RESUME = Resume(
 
 
 def test_render_then_parse_round_trips_to_the_same_resume():
-    parsed = _parse_base_md(_render_base_md(RESUME))
+    parsed = parse_base_md(render_base_md(RESUME))
     assert parsed == RESUME
 
 
 def test_manually_added_bullet_survives_round_trip_without_variants():
-    parsed = _parse_base_md(_render_base_md(RESUME))
+    parsed = parse_base_md(render_base_md(RESUME))
     new_bullet = parsed.experience[0].bullets[1]
     assert new_bullet.original == "Freshly added bullet with no variants yet"
     assert new_bullet.variants == []
@@ -66,5 +66,5 @@ def test_manually_added_bullet_survives_round_trip_without_variants():
 
 def test_headline_round_trips_when_present():
     resume_with_headline = RESUME.model_copy(update={"headline": "Senior Data Engineer"})
-    parsed = _parse_base_md(_render_base_md(resume_with_headline))
+    parsed = parse_base_md(render_base_md(resume_with_headline))
     assert parsed == resume_with_headline

@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     page_trim_attempts: int = 3
     min_fit_score: float = 0.4
     min_jd_chars: int = 200
+    # How many extra tailor+review rounds to try after the first, each folding the
+    # previous round's own remaining_gaps/improvement_suggestions back in. Stops
+    # early as soon as a round's fit_score fails to beat the best one so far — this
+    # just bounds the worst case. 0 disables refinement entirely.
+    max_refine_attempts: int = 3
 
     def __repr__(self):
         return self.model_dump(exclude={"anthropic_api_key"}, mode="json")

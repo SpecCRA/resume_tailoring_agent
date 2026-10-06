@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from resume_agent.errors import InvalidSlugError, MarkdownFileNotFoundError
-from resume_agent.pipelines import setup as setup_pipeline
 from resume_agent.pipelines.critique import run_critique
 from resume_agent.prompts.critique import PERSONAS
+from resume_agent.tools.resume_markdown import render_base_md
 
 
 def _fake_message(text: str):
@@ -41,7 +41,7 @@ def _write_base_resume(base_path):
         education=[],
         projects=[],
     )
-    base_path.write_text(setup_pipeline._render_base_md(resume))
+    base_path.write_text(render_base_md(resume))
 
 
 def _canned_finding(location: str):

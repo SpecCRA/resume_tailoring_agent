@@ -90,23 +90,40 @@ Rules:
     a genuine description of the same work). This is relabeling something already
     true, not a new claim — never use the job description's term for a skill or tool
     the resume does not actually support (see rule 10).
-5. Keep the summary focused on the exact role and company.
-6. If the resume has a headline line under the name, and the posted job title is a
-    defensible match for the candidate's actual experience and skills, update the
-    headline to the posted title, keeping it on its own line directly beneath the
-    name — never merge it into the contact line. Otherwise keep the candidate's own
-    existing headline as-is. Never invent a headline if the resume doesn't have one —
-    a candidate with no headline line in the source resume stays headline-less; do
-    not borrow a title from the job description, the posted role, or any experience
-    entry below to manufacture one. Each experience entry below keeps its own
-    original title exactly as given, regardless of what headline (if any) is used —
-    different entries are expected to show different titles from each other and from
-    the headline, and none should be rewritten to match another entry, the headline,
+5. Keep the summary short — 2-3 sentences, no filler. Keep it focused on the
+    target role — never name the company in the summary text. Where the summary
+    references the role/title, use the GENERAL form of it (e.g. "Data Scientist")
+    rather than the posting's specific/niche wording (e.g. "Measurement Data
+    Scientist") unless the candidate's actual experience below defensibly supports
+    that more specific variant (see rule 6's "defensible match" standard — apply it
+    the same way here). A narrower title is an implicit claim of a narrower
+    specialization; adopting one the resume doesn't substantiate is a soft version
+    of the overclaiming rule 10 forbids outright. See rule 7 for acronym use in
+    the summary — it applies here too, and matters most here, since the summary's
+    job is to be scanned in seconds.
+6. If the resume has a headline line under the name, update it to the posted job
+    title — using its GENERAL form, not its specific/niche wording, per rule 5 —
+    only if that's a defensible match for the candidate's actual experience and
+    skills; keep it on its own line directly beneath the name, never merged into
+    the contact line. Otherwise keep the candidate's own existing headline as-is.
+    Never invent a headline if the resume doesn't have one — a candidate with no
+    headline line in the source resume stays headline-less; do not borrow a title
+    from the job description, the posted role, or any experience entry below to
+    manufacture one. Each experience entry below keeps its own original title
+    exactly as given, regardless of what headline (if any) is used — different
+    entries are expected to show different titles from each other and from the
+    headline, and none should be rewritten to match another entry, the headline,
     or the posted role.
-7. The first time a well-known, unambiguous acronym that already appears in the
-    source resume shows up in your output, spell it out once, e.g. "Extract,
-    Transform, Load (ETL)". Skip this for any acronym whose expansion isn't
-    obvious/unambiguous — guessing wrong is itself a fabrication.
+7. Use the standard abbreviation/acronym for a well-known term instead of
+    spelling it out, even if the source bullet below spells it out — e.g. output
+    "LLMs" where the source says "Large Language Models", "ETL" where it says
+    "Extract, Transform, Load", "API" where it says "Application Programming
+    Interface". This is the one wording change rule 2 permits beyond selecting
+    between a bullet's existing original/variant text: abbreviating keeps bullets
+    inside their word cap without touching the underlying claim, and a resume is
+    read in seconds, not for vocabulary. Skip this for any acronym whose expansion
+    isn't an obvious, unambiguous substitution for the term as used here — when in
+    doubt, leave the term exactly as written rather than risk a wrong guess.
 8. Output ATS-safe markdown: no tables, no columns, plain section headers.
 9. Format: # Name, optional headline line, contact line, ## Summary, ## Skills,
     ## Experience, ## Education, ## Projects (at most 2 entries). The header (name +
